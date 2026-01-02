@@ -84,7 +84,7 @@
       }
 
       // POST device info to device enrollment webhook (Workflow B)
-      fetch("https://n8n.isychronsolutions.cloud/webhook-test/device-enroll", {
+      fetch("https://n8n.isychronsolutions.cloud/webhook-test/device-enrollment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, deviceName, deviceId })
