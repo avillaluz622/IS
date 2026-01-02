@@ -4,111 +4,108 @@
   <meta charset="UTF-8">
   <title>Device Enrollment</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; }
-    h1 { text-align: center; }
-    label { display: block; margin-top: 15px; }
-    input[type="text"] { width: 100%; padding: 8px; margin-top: 5px; }
-    button { margin-top: 20px; padding: 10px 20px; cursor: pointer; }
-    .message { margin-top: 20px; color: green; }
-    .error { margin-top: 20px; color: red; }
-    .info { margin-top: 20px; color: blue; }
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    .container { max-width: 600px; margin: auto; }
+    .error { color: red; margin-top: 20px; }
+    .info { margin-top: 20px; }
+    label { display: block; margin-top: 10px; }
+    input[type="text"], input[type="email"] { width: 100%; padding: 8px; margin-top: 4px; }
+    button { margin-top: 20px; padding: 10px 20px; }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Device Enrollment</h1>
+    <div id="status">Loading user info...</div>
 
-<h1>Enroll Your Device</h1>
+    <div id="user-info" style="display:none;">
+      <p><strong>Full Name:</strong> <span id="fullname"></span></p>
+      <p><strong>Assigned Stations:</strong> <span id="stations"></span></p>
 
-<div id="user-info" class="info"></div>
+      <form id="device-form">
+        <label for="deviceName">Device Name:</label>
+        <input type="text" id="deviceName" required>
 
-<div id="form-container" style="display:none;">
-  <form id="device-form">
-    <label>Device Name:
-      <input type="text" id="device_name" required>
-    </label>
-    <label>Device Model:
-      <input type="text" id="device_model" required>
-    </label>
-    <label>Device OS:
-      <input type="text" id="device_os" required>
-    </label>
-    <button type="submit">Enroll Device</button>
-  </form>
-  <div class="message" id="success-msg" style="display:none;"></div>
-  <div class="error" id="error-msg" style="display:none;"></div>
-</div>
+        <label for="deviceId">Device ID:</label>
+        <input type="text" id="deviceId" required>
 
-<script>
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('token');
-  const userInfoDiv = document.getElementById('user-info');
+        <button type="submit">Enroll Device</button>
+      </form>
 
-  if (!token) {
-    userInfoDiv.innerHTML = "<p class='error'>Invalid or missing token.</p>";
-  } else {
-    // Fetch user info from n8n webhook (new endpoint)
-    fetch("https://YOUR_N8N_WEBHOOK_URL/get-user-info", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        userInfoDiv.innerHTML = `
-          <p>Hello <strong>${data.fullname}</strong></p>
-          <p>Assigned Station(s): <strong>${data.assigned_stations}</strong></p>
-        `;
-        document.getElementById('form-container').style.display = "block";
-      } else {
-        userInfoDiv.innerHTML = `<p class='error'>${data.message}</p>`;
-      }
-    })
-    .catch(err => {
-      userInfoDiv.innerHTML = "<p class='error'>Unable to fetch user info. Try again later.</p>";
-    });
-  }
+      <div id="form-status" class="error"></div>
+    </div>
 
-  const form = document.getElementById('device-form');
-  const successMsg = document.getElementById('success-msg');
-  const errorMsg = document.getElementById('error-msg');
+    <div id="error-message" class="error"></div>
+  </div>
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  <script>
+    // 1. Get token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
 
-    const device_name = document.getElementById('device_name').value.trim();
-    const device_model = document.getElementById('device_model').value.trim();
-    const device_os = document.getElementById('device_os').value.trim();
-
-    if (!device_name || !device_model || !device_os) {
-      errorMsg.style.display = "block";
-      errorMsg.textContent = "All fields are required.";
-      return;
-    }
-
-    try {
-      const response = await fetch("https://YOUR_N8N_WEBHOOK_URL/device-enroll", {
+    if (!token) {
+      document.getElementById('status').style.display = 'none';
+      document.getElementById('error-message').innerText = 'Missing token. Please use the link provided.';
+    } else {
+      // 2. Fetch user info from Workflow 3
+      fetch("https://n8n.isychronsolutions.cloud/webhook-test/get-user-info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, device_name, device_model, device_os })
+        body: JSON.stringify({ token })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('status').style.display = 'none';
+        if (data.success) {
+          document.getElementById('user-info').style.display = 'block';
+          document.getElementById('fullname').innerText = data.fullname;
+          document.getElementById('stations').innerText = data.assigned_stations;
+        } else {
+          document.getElementById('error-message').innerText = data.message;
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById('status').style.display = 'none';
+        document.getElementById('error-message').innerText = 'Unable to fetch user info. Please try again later.';
       });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        successMsg.style.display = "block";
-        successMsg.textContent = `Device enrolled successfully! Device ID: ${data.device_id}`;
-        form.style.display = "none";
-        errorMsg.style.display = "none";
-      } else {
-        errorMsg.style.display = "block";
-        errorMsg.textContent = data.message || "Enrollment failed.";
-      }
-    } catch (err) {
-      errorMsg.style.display = "block";
-      errorMsg.textContent = "Network error. Please try again later.";
     }
-  });
-</script>
 
+    // 3. Handle device form submission
+    document.getElementById('device-form')?.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const deviceName = document.getElementById('deviceName').value.trim();
+      const deviceId = document.getElementById('deviceId').value.trim();
+      const formStatus = document.getElementById('form-status');
+
+      if (!deviceName || !deviceId) {
+        formStatus.innerText = 'Please fill in both device name and device ID.';
+        return;
+      }
+
+      // POST device info to device enrollment webhook (Workflow B)
+      fetch("https://n8n.isychronsolutions.cloud/webhook-test/device-enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, deviceName, deviceId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          formStatus.style.color = 'green';
+          formStatus.innerText = 'Device enrolled successfully!';
+          document.getElementById('device-form').reset();
+        } else {
+          formStatus.style.color = 'red';
+          formStatus.innerText = data.message || 'Device enrollment failed.';
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        formStatus.style.color = 'red';
+        formStatus.innerText = 'Error enrolling device. Please try again.';
+      });
+    });
+  </script>
 </body>
 </html>
