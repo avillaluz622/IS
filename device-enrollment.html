@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Device Enrollment</title>
+</head>
+<body>
+  <h2>Device Enrollment</h2>
+
+  <form id="enrollForm">
+    <label>Device ID</label><br>
+    <input type="text" id="device_id" required><br><br>
+
+    <label>Email</label><br>
+    <input type="email" id="email" required><br><br>
+
+    <button type="submit">Enroll Device</button>
+  </form>
+
+  <script>
+    function getDeviceInfo() {
+      const ua = navigator.userAgent;
+
+      return {
+        user_agent: ua,
+        platform: navigator.platform,
+        language: navigator.language,
+        screen: `${screen.width}x${screen.height}`,
+        device_type: /Mobi|Android/i.test(ua) ? "Mobile" : "Desktop",
+        browser: ua.includes("Chrome") ? "Chrome" :
+                 ua.includes("Firefox") ? "Firefox" :
+                 ua.includes("Safari") ? "Safari" : "Unknown",
+        os: ua.includes("Windows") ? "Windows" :
+            ua.includes("Android") ? "Android" :
+            ua.includes("iPhone") ? "iOS" :
+            ua.includes("Mac") ? "macOS" : "Unknown"
+      };
+    }
+
+    document.getElementById("enrollForm").addEventListener("submit", async e => {
+      e.preventDefault();
+
+      const payload = {
+        device_id: document.getElementById("device_id").value.trim(),
+        assigned_email: document.getElementById("email").value.trim(),
+        device: getDeviceInfo(),
+        timestamp: new Date().toISOString()
+      };
+
+      const res = await fetch(
+        "https://YOUR-N8N-DOMAIN/webhook/device-enrollment",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      alert("Enrollment submitted!");
+    });
+  </script>
+</body>
+</html>
