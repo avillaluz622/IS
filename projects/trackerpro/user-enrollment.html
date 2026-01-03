@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>User Enrollment</title>
 <style>
-  body { font-family: Arial, sans-serif; background: #f4f6f8; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+  body { font-family: Arial, sans-serif; background: #f4f6f8; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; padding: 40px 20px; }
+  h1 { color: #333; text-align: center; }
   .info-box, .form-box { background: #fff; padding: 20px 30px; margin: 15px 0; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); max-width: 400px; width: 100%; text-align: center; }
   label { display: block; margin: 12px 0 5px; font-weight: bold; color: #555; }
   input[type="password"] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
-  button { margin-top: 20px; padding: 12px 25px; background-color: #0077ff; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-  .message { margin-top: 15px; color: red; font-size: 14px; }
+  button { margin-top: 20px; padding: 12px 25px; background-color: #0077ff; color: #fff; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+  button:hover { background-color: #005fcc; }
+  .message { margin-top: 15px; color: red; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -23,17 +25,20 @@
   <p><strong>Assigned Stations:</strong> <span id="assigned-stations">Loading...</span></p>
 </div>
 
-<div class="form-box" id="password-box" style="display: none;"> <form id="reset-form">
-    <label for="password">Set your new password:</label>
-    <input type="password" id="password" name="new-password" placeholder="Enter new password" required>
-    <button type="submit" id="submit-btn">Reset Password</button>
+<div class="form-box" id="password-box" style="display: none;">
+  <form id="reset-form">
+    <label for="password_input">Set your new password:</label>
+    <input type="password" id="password_input" name="password" placeholder="Enter new password" required>
+    <button type="submit">Reset Password</button>
     <div class="message" id="msg"></div>
   </form>
 </div>
 
 <script>
-const RESET_PASSWORD_URL = "https://n8n.isychronsolutions.cloud/webhook-test/password-reset";
+// === CONFIGURATION ===
+// Switch these to the "Production URL" (no -test) once your workflow is Active!
 const GET_USER_URL = "https://n8n.isychronsolutions.cloud/webhook-test/get-user-info";
+const RESET_PASSWORD_URL = "https://n8n.isychronsolutions.cloud/webhook-test/password-reset";
 
 const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get("token");
@@ -45,56 +50,53 @@ const msgEl = document.getElementById("msg");
 const passwordBox = document.getElementById("password-box");
 
 if (!token) {
-    msgEl.textContent = "Error: No security token found in URL.";
-    msgEl.parentElement.style.display = "block";
+    fullnameEl.textContent = "Error";
+    msgEl.textContent = "Missing token. Check your link.";
 } else {
     fetch(GET_USER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: token })
     })
-    .then(async resp => {
-        if (!resp.ok) throw new Error(`Server Error: ${resp.status}`);
-        return resp.json();
+    .then(response => {
+        if (!response.ok) throw new Error("Server communication failed.");
+        return response.json();
     })
     .then(data => {
-        // Handle n8n returning an array (common in n8n)
+        // FIX: Handle n8n sending an array instead of a single object
         const user = Array.isArray(data) ? data[0] : data;
 
         if (!user || !user.user_id) {
-            throw new Error("User data not found or token expired.");
+            throw new Error("User data not found.");
         }
 
+        // Display Data
         fullnameEl.textContent = user.fullname || "N/A";
         emailEl.textContent = user.email || "N/A";
-        stationsEl.textContent = user.assigned_stations || "None";
+        stationsEl.textContent = user.assigned_stations || "N/A";
 
-        // Logic check: if already reset, redirect
+        // Logic check: only show box if password isn't set
         if (user.password_reset_at) {
             msgEl.style.color = "green";
-            msgEl.textContent = "Account already active. Redirecting...";
-            setTimeout(() => {
-                window.location.href = `device-enrollment.html?user_id=${user.user_id}`;
-            }, 1500);
+            msgEl.textContent = "Redirecting to enrollment...";
+            // Optional: window.location.href = 'device-enrollment.html';
         } else {
             passwordBox.style.display = "block";
         }
     })
     .catch(err => {
-        console.error("Fetch error:", err);
+        console.error("Initialization Error:", err);
         fullnameEl.textContent = "Error";
         emailEl.textContent = "Error";
         stationsEl.textContent = "Error";
-        msgEl.textContent = "Connection failed: Check CORS or n8n status.";
-        passwordBox.style.display = "none";
+        msgEl.textContent = "Could not load user data. Contact Support.";
     });
 }
 
-// Submit Logic
 document.getElementById("reset-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const newPassword = document.getElementById("password").value;
-    
+    const newPassword = document.getElementById("password_input").value;
+
     fetch(RESET_PASSWORD_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -103,13 +105,15 @@ document.getElementById("reset-form").addEventListener("submit", (e) => {
     .then(resp => resp.json())
     .then(data => {
         msgEl.style.color = "green";
-        msgEl.textContent = "Success! Redirecting...";
-        // ... (your redirect logic)
+        msgEl.textContent = "Password set! Redirecting...";
+        // Redirect logic here
     })
     .catch(err => {
-        msgEl.textContent = "Submit failed. Try again.";
+        msgEl.style.color = "red";
+        msgEl.textContent = "Update failed. Try again.";
     });
 });
 </script>
+
 </body>
 </html>
