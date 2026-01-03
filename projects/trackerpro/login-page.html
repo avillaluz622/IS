@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authentication</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f4f6f8; display: flex; flex-direction: column; align-items: center; padding: 40px; }
+  .form-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; display: none; }
+  label { display: block; margin: 10px 0 5px; font-weight: bold; color: #555; }
+  input { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+  button { width: 100%; padding: 12px; background: #0077ff; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+  .msg { margin-top: 15px; font-size: 14px; text-align: center; color: #666; }
+</style>
+</head>
+<body>
+
+<div id="loader">Verifying account...</div>
+
+<div class="form-box" id="auth-container">
+  <h2 id="form-title">Login</h2>
+  <form id="auth-form">
+    <div id="email-group">
+      <label for="email_field">Email Address</label>
+      <input type="email" id="email_field" name="email">
+    </div>
+    <label for="password_field" id="pass-label">Password</label>
+    <input type="password" id="password_field" name="password" required>
+    <button type="submit" id="btn-text">Login</button>
+  </form>
+  <div class="msg" id="status-msg"></div>
+</div>
+
+<script>
+const API_URL = "https://n8n.isychronsolutions.cloud/webhook/auth-check";
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get("token");
+
+// 1. Check if user needs to Reset or Login
+fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: token, action: "check_status" })
+})
+.then(r => r.json())
+.then(data => {
+    document.getElementById("loader").style.display = "none";
+    document.getElementById("auth-container").style.display = "block";
+    
+    if (data.mode === "reset") {
+        document.getElementById("form-title").textContent = "Account Activation";
+        document.getElementById("email-group").style.display = "none";
+        document.getElementById("pass-label").textContent = "Set New Password";
+        document.getElementById("btn-text").textContent = "Create Account";
+    }
+});
+
+// 2. Submit credentials
+document.getElementById("auth-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const statusMsg = document.getElementById("status-msg");
+    statusMsg.textContent = "Checking credentials...";
+
+    const payload = {
+        token: token,
+        email: document.getElementById("email_field").value,
+        password: document.getElementById("password_field").value,
+        action: "authenticate"
+    };
+
+    try {
+        const resp = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        
+        if (result.success) {
+            statusMsg.style.color = "green";
+            statusMsg.textContent = "Authorized. Redirecting...";
+            setTimeout(() => {
+                window.location.href = `device-enrollment.html?user_id=${result.user_id}`;
+            }, 1200);
+        } else {
+            statusMsg.style.color = "red";
+            statusMsg.textContent = result.message || "Invalid credentials.";
+        }
+    } catch (err) {
+        statusMsg.textContent = "Server error. Try again later.";
+    }
+});
+</script>
+</body>
+</html>
