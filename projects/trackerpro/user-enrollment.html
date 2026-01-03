@@ -82,7 +82,7 @@
 
 <script>
 // === CONFIGURE YOUR WEBHOOK URL HERE ===
-const RESET_PASSWORD_URL = "https://n8n.isychronsolutions.cloud/webhook-test/reset-password";
+const RESET_PASSWORD_URL = "https://n8n.isychronsolutions.cloud/webhook-test/user-password-reset";
 const GET_USER_URL = "https://n8n.isychronsolutions.cloud/webhook-test/get-user-info";
 
 // Parse token from URL
@@ -102,11 +102,12 @@ if (!token) {
   // Fetch user info from Workflow 3
   fetch(GET_USER_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" }, // no Authorization
     body: JSON.stringify({ token: token })
   })
   .then(resp => resp.json())
   .then(data => {
+    console.log("Workflow 3 response:", data);
     if (!data || !data.user_id) {
       throw new Error("Unable to fetch user info. Try again later.");
     }
@@ -116,13 +117,17 @@ if (!token) {
     emailEl.textContent = data.email || "";
     stationsEl.textContent = data.assigned_stations || "";
 
-    // If password already reset, hide form and redirect to device enrollment
-    if (data.password_reset_at) {
+    // Only hide password box if password has been reset
+    if (data.password_reset_at !== null && data.password_reset_at !== "") {
       passwordBox.style.display = "none";
+      // Redirect to device enrollment page
       window.location.href = `device-enrollment.html?user_id=${encodeURIComponent(data.user_id)}&fullname=${encodeURIComponent(data.fullname)}&email=${encodeURIComponent(data.email)}&assigned_stations=${encodeURIComponent(data.assigned_stations)}`;
+    } else {
+      passwordBox.style.display = "block";
     }
   })
   .catch(err => {
+    console.error(err);
     msgEl.textContent = err.message;
     passwordBox.style.display = 'none';
   });
@@ -140,7 +145,7 @@ document.getElementById("reset-form").addEventListener("submit", (e) => {
 
   fetch(RESET_PASSWORD_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" }, // no Authorization
     body: JSON.stringify({ token: token, password: newPassword })
   })
   .then(resp => resp.json())
