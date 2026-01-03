@@ -72,10 +72,12 @@
 </div>
 
 <div class="form-box" id="password-box">
-  <label for="password">Set your new password:</label>
-  <input type="password" id="password" placeholder="Enter new password" required>
-  <button id="submit-btn">Reset Password</button>
-  <div class="message" id="msg"></div>
+  <form id="reset-form">
+    <label for="password">Set your new password:</label>
+    <input type="password" id="password" name="password" placeholder="Enter new password" required>
+    <button type="submit">Reset Password</button>
+    <div class="message" id="msg"></div>
+  </form>
 </div>
 
 <script>
@@ -87,9 +89,15 @@ const GET_USER_URL = "https://n8n.isychronsolutions.cloud/webhook-test/get-user-
 const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get("token");
 
+const fullnameEl = document.getElementById("fullname");
+const emailEl = document.getElementById("email");
+const stationsEl = document.getElementById("assigned-stations");
+const msgEl = document.getElementById("msg");
+const passwordBox = document.getElementById("password-box");
+
 if (!token) {
-  document.getElementById('msg').textContent = "Missing token. Cannot load user info.";
-  document.getElementById('password-box').style.display = 'none';
+  msgEl.textContent = "Missing token. Cannot load user info.";
+  passwordBox.style.display = 'none';
 } else {
   // Fetch user info from Workflow 3
   fetch(GET_USER_URL, {
@@ -104,27 +112,27 @@ if (!token) {
     }
 
     // Display user info
-    document.getElementById("fullname").textContent = data.fullname || "";
-    document.getElementById("email").textContent = data.email || "";
-    document.getElementById("assigned-stations").textContent = data.assigned_stations || "";
+    fullnameEl.textContent = data.fullname || "";
+    emailEl.textContent = data.email || "";
+    stationsEl.textContent = data.assigned_stations || "";
 
     // If password already reset, hide form and redirect to device enrollment
     if (data.password_reset_at) {
-      document.getElementById("password-box").style.display = "none";
-      // Redirect to device enrollment page
+      passwordBox.style.display = "none";
       window.location.href = `device-enrollment.html?user_id=${encodeURIComponent(data.user_id)}&fullname=${encodeURIComponent(data.fullname)}&email=${encodeURIComponent(data.email)}&assigned_stations=${encodeURIComponent(data.assigned_stations)}`;
     }
   })
   .catch(err => {
-    document.getElementById('msg').textContent = err.message;
-    document.getElementById('password-box').style.display = 'none';
+    msgEl.textContent = err.message;
+    passwordBox.style.display = 'none';
   });
 }
 
 // Handle password reset submission
-document.getElementById("submit-btn").addEventListener("click", () => {
+document.getElementById("reset-form").addEventListener("submit", (e) => {
+  e.preventDefault(); // prevent page reload
   const newPassword = document.getElementById("password").value.trim();
-  const msgEl = document.getElementById("msg");
+
   if (!newPassword) {
     msgEl.textContent = "Password cannot be empty.";
     return;
@@ -139,7 +147,6 @@ document.getElementById("submit-btn").addEventListener("click", () => {
   .then(data => {
     msgEl.style.color = "green";
     msgEl.textContent = "Password successfully reset. Redirecting...";
-    // Redirect after short delay
     setTimeout(() => {
       window.location.href = `device-enrollment.html?user_id=${encodeURIComponent(data.user_id)}&fullname=${encodeURIComponent(data.fullname)}&email=${encodeURIComponent(data.email)}&assigned_stations=${encodeURIComponent(data.assigned_stations)}`;
     }, 1200);
