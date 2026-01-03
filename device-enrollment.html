@@ -135,6 +135,18 @@
       userInfoDiv.innerHTML = '<p>User info not available. Please check your link.</p>';
     }
 
+    // Generate a device fingerprint
+    function getDeviceFingerprint() {
+      return [
+        navigator.userAgent,
+        navigator.platform,
+        screen.width,
+        screen.height,
+        navigator.language,
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+      ].join('|');
+    }
+
     // Fetch previously enrolled devices from Workflow 3
     async function fetchDevices() {
       if (!user_id) {
@@ -185,11 +197,13 @@
         return;
       }
 
+      const device_fingerprint = getDeviceFingerprint(); // New fingerprint
+
       try {
         const response = await fetch('https://n8n.isychronsolutions.cloud/webhook/enroll-device', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id, device_name })
+          body: JSON.stringify({ user_id, device_name, device_fingerprint })
         });
 
         const data = await response.json();
