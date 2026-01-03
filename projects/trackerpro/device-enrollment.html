@@ -63,7 +63,7 @@
       }
 
       try {
-        const response = await fetch(`${API_BASE}/enroll-device`, {
+        const response = await fetch(`${API_BASE}/get-user-info`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id, action: "fetch_enrollment_data" })
