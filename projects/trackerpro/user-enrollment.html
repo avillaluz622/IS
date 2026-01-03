@@ -1,85 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>User Enrollment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; }
-    h1 { text-align: center; }
-    label { display: block; margin-top: 15px; }
-    input[type="password"], input[type="text"] { width: 100%; padding: 8px; margin-top: 5px; }
-    button { margin-top: 20px; padding: 10px 20px; cursor: pointer; }
-    .message { margin-top: 20px; color: green; }
-    .error { margin-top: 20px; color: red; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .card {
+      background: #fff;
+      padding: 30px;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 10px;
+    }
+    .info {
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #555;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #0066ff;
+      color: #fff;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    button:hover {
+      background: #0052cc;
+    }
+    .hidden {
+      display: none;
+    }
+    .success {
+      color: green;
+      margin-top: 10px;
+    }
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+    a {
+      display: inline-block;
+      margin-top: 15px;
+      text-decoration: none;
+      color: #0066ff;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
-<h1>User Enrollment</h1>
+<div class="card">
 
-<div id="form-container">
-  <p>Reset your password to complete registration:</p>
-  <form id="enrollment-form">
-    <label>New Password:
-      <input type="password" id="password" required>
-    </label>
-    <label>Confirm Password:
-      <input type="password" id="confirm-password" required>
-    </label>
-    <button type="submit">Submit</button>
-  </form>
-  <div class="message" id="success-msg" style="display:none;"></div>
-  <div class="error" id="error-msg" style="display:none;"></div>
+  <h2 id="welcomeTitle">User Enrollment</h2>
+  <div class="info" id="userInfo"></div>
+
+  <!-- RESET PASSWORD -->
+  <div id="resetSection" class="hidden">
+    <p>Please set your password (one-time only).</p>
+    <input type="password" id="password" placeholder="New Password" />
+    <input type="password" id="confirmPassword" placeholder="Confirm Password" />
+    <button onclick="resetPassword()">Reset Password</button>
+    <div id="resetMsg"></div>
+  </div>
+
+  <!-- DEVICE ENROLLMENT -->
+  <div id="deviceSection" class="hidden">
+    <p>Your account is active.</p>
+    <a id="deviceLink" href="#">Go to Device Enrollment</a>
+  </div>
+
 </div>
 
 <script>
-  // Extract token from URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('token');
+const token = new URLSearchParams(window.location.search).get("token");
 
-  if (!token) {
-    document.getElementById('form-container').innerHTML = "<p class='error'>Invalid or missing token.</p>";
+if (!token) {
+  document.body.innerHTML = "<h3>Invalid or missing token</h3>";
+  throw new Error("Missing token");
+}
+
+// 🔁 CHANGE THESE URLs
+const GET_USER_URL = "https://n8n.isychronsolutions.cloud/webhook/get-user-info";
+const RESET_PASSWORD_URL = "https://n8n.isychronsolutions.cloud/webhook/reset-password";
+const DEVICE_ENROLLMENT_URL = "https://isychronsolutions.github.io/IS/device-enrollment.html";
+
+let userData = null;
+
+// Load user info
+fetch(GET_USER_URL, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ token })
+})
+.then(res => res.json())
+.then(data => {
+  userData = data;
+
+  document.getElementById("welcomeTitle").innerText =
+    `Welcome, ${data.fullname}`;
+
+  document.getElementById("userInfo").innerText =
+    `${data.email} • Stations: ${data.assigned_stations}`;
+
+  // 🔐 If password NOT yet reset
+  if (!data.password_reset_at) {
+    document.getElementById("resetSection").classList.remove("hidden");
+  } else {
+    showDeviceEnrollment();
+  }
+})
+.catch(() => {
+  document.body.innerHTML = "<h3>Error loading user info.</h3>";
+});
+
+function resetPassword() {
+  const pw = document.getElementById("password").value;
+  const cpw = document.getElementById("confirmPassword").value;
+  const msg = document.getElementById("resetMsg");
+
+  if (!pw || pw.length < 6) {
+    msg.innerHTML = "<div class='error'>Password must be at least 6 characters</div>";
+    return;
+  }
+  if (pw !== cpw) {
+    msg.innerHTML = "<div class='error'>Passwords do not match</div>";
+    return;
   }
 
-  const form = document.getElementById('enrollment-form');
-  const successMsg = document.getElementById('success-msg');
-  const errorMsg = document.getElementById('error-msg');
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
-
-    if (password !== confirmPassword) {
-      errorMsg.style.display = "block";
-      errorMsg.textContent = "Passwords do not match.";
-      return;
-    }
-
-    try {
-      // Call n8n webhook to validate token and update password
-      const response = await fetch("https://YOUR_N8N_WEBHOOK_URL", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        successMsg.style.display = "block";
-        successMsg.textContent = "Password updated successfully! You can now enroll devices.";
-        form.style.display = "none";
-      } else {
-        errorMsg.style.display = "block";
-        errorMsg.textContent = data.message || "An error occurred.";
-      }
-    } catch (err) {
-      errorMsg.style.display = "block";
-      errorMsg.textContent = "Network error. Try again later.";
-    }
+  fetch(RESET_PASSWORD_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password: pw })
+  })
+  .then(res => res.json())
+  .then(() => {
+    msg.innerHTML = "<div class='success'>Password reset successful</div>";
+    setTimeout(showDeviceEnrollment, 1000);
+  })
+  .catch(() => {
+    msg.innerHTML = "<div class='error'>Failed to reset password</div>";
   });
+}
+
+function showDeviceEnrollment() {
+  document.getElementById("resetSection").classList.add("hidden");
+  document.getElementById("deviceSection").classList.remove("hidden");
+
+  const link = `${DEVICE_ENROLLMENT_URL}?token=${encodeURIComponent(token)}`;
+  document.getElementById("deviceLink").href = link;
+}
 </script>
 
 </body>
