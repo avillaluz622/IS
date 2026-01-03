@@ -112,6 +112,7 @@
   </div>
 
   <script>
+    // Read user info from URL parameters (passed from Workflow 1)
     const params = new URLSearchParams(window.location.search);
     const user_id = params.get('user_id');
     const fullname = params.get('fullname');
@@ -123,15 +124,24 @@
     const deviceList = document.getElementById('deviceList');
     const userInfoDiv = document.getElementById('userInfo');
 
-    // Display user info from URL params
-    userInfoDiv.innerHTML = `
-      <p><strong>Full Name:</strong> ${fullname}</p>
-      <p><strong>Email:</strong> ${email}</p>
-      <p><strong>Assigned Stations:</strong> ${assigned_stations}</p>
-    `;
+    // Display user info
+    if (fullname && email && assigned_stations) {
+      userInfoDiv.innerHTML = `
+        <p><strong>Full Name:</strong> ${decodeURIComponent(fullname)}</p>
+        <p><strong>Email:</strong> ${decodeURIComponent(email)}</p>
+        <p><strong>Assigned Stations:</strong> ${decodeURIComponent(assigned_stations)}</p>
+      `;
+    } else {
+      userInfoDiv.innerHTML = '<p>User info not available. Please check your link.</p>';
+    }
 
-    // Fetch devices from Workflow 3
+    // Fetch previously enrolled devices from Workflow 3
     async function fetchDevices() {
+      if (!user_id) {
+        deviceList.innerHTML = '<li>User ID missing. Cannot fetch devices.</li>';
+        return;
+      }
+
       try {
         const response = await fetch('https://n8n.isychronsolutions.cloud/webhook/get-user-devices', {
           method: 'POST',
@@ -162,10 +172,10 @@
       }
     }
 
-    // Initial fetch on page load
+    // Initial fetch
     fetchDevices();
 
-    // Enroll new device
+    // Enroll new device (Workflow 2)
     enrollBtn.addEventListener('click', async () => {
       const device_name = document.getElementById('device_name').value.trim();
 
@@ -188,7 +198,7 @@
           status.style.color = 'green';
           status.textContent = `Device enrolled successfully. Device ID: ${data.device_id}`;
           document.getElementById('device_name').value = '';
-          fetchDevices();
+          fetchDevices(); // Refresh device list
         } else {
           status.style.color = 'red';
           status.textContent = `Error: ${data.message}`;
