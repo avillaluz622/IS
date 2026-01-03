@@ -1,177 +1,154 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>User Enrollment</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .card {
-      background: #fff;
-      padding: 30px;
-      width: 100%;
-      max-width: 420px;
-      border-radius: 10px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    h2 {
-      margin-bottom: 10px;
-    }
-    .info {
-      margin-bottom: 20px;
-      font-size: 14px;
-      color: #555;
-    }
-    input {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      font-size: 14px;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      background: #0066ff;
-      color: #fff;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 6px;
-    }
-    button:hover {
-      background: #0052cc;
-    }
-    .hidden {
-      display: none;
-    }
-    .success {
-      color: green;
-      margin-top: 10px;
-    }
-    .error {
-      color: red;
-      margin-top: 10px;
-    }
-    a {
-      display: inline-block;
-      margin-top: 15px;
-      text-decoration: none;
-      color: #0066ff;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Enrollment</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  h1 {
+    color: #333;
+    text-align: center;
+  }
+  .info-box, .form-box {
+    background: #fff;
+    padding: 20px 30px;
+    margin: 15px 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+  }
+  label {
+    display: block;
+    margin: 12px 0 5px;
+    font-weight: bold;
+    color: #555;
+  }
+  input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  button {
+    margin-top: 20px;
+    padding: 12px 25px;
+    background-color: #0077ff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #005fcc;
+  }
+  .message {
+    margin-top: 15px;
+    color: red;
+  }
+</style>
 </head>
 <body>
 
-<div class="card">
+<h1>User Enrollment</h1>
 
-  <h2 id="welcomeTitle">User Enrollment</h2>
-  <div class="info" id="userInfo"></div>
+<div class="info-box" id="user-info">
+  <p><strong>Full Name:</strong> <span id="fullname">Loading...</span></p>
+  <p><strong>Email:</strong> <span id="email">Loading...</span></p>
+  <p><strong>Assigned Stations:</strong> <span id="assigned-stations">Loading...</span></p>
+</div>
 
-  <!-- RESET PASSWORD -->
-  <div id="resetSection" class="hidden">
-    <p>Please set your password (one-time only).</p>
-    <input type="password" id="password" placeholder="New Password" />
-    <input type="password" id="confirmPassword" placeholder="Confirm Password" />
-    <button onclick="resetPassword()">Reset Password</button>
-    <div id="resetMsg"></div>
-  </div>
-
-  <!-- DEVICE ENROLLMENT -->
-  <div id="deviceSection" class="hidden">
-    <p>Your account is active.</p>
-    <a id="deviceLink" href="#">Go to Device Enrollment</a>
-  </div>
-
+<div class="form-box" id="password-box">
+  <label for="password">Set your new password:</label>
+  <input type="password" id="password" placeholder="Enter new password" required>
+  <button id="submit-btn">Reset Password</button>
+  <div class="message" id="msg"></div>
 </div>
 
 <script>
-const token = new URLSearchParams(window.location.search).get("token");
+// === CONFIGURE YOUR WEBHOOK URL HERE ===
+const RESET_PASSWORD_URL = "https://n8n.isychronsolutions.cloud/webhook-test/user-password-reset";
+const GET_USER_URL = "https://n8n.isychronsolutions.cloud/webhook-test/get-user-info";
+
+// Parse token from URL
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get("token");
 
 if (!token) {
-  document.body.innerHTML = "<h3>Invalid or missing token</h3>";
-  throw new Error("Missing token");
+  document.getElementById('msg').textContent = "Missing token. Cannot load user info.";
+  document.getElementById('password-box').style.display = 'none';
+} else {
+  // Fetch user info from Workflow 3
+  fetch(GET_USER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: token })
+  })
+  .then(resp => resp.json())
+  .then(data => {
+    if (!data || !data.user_id) {
+      throw new Error("Unable to fetch user info. Try again later.");
+    }
+
+    // Display user info
+    document.getElementById("fullname").textContent = data.fullname || "";
+    document.getElementById("email").textContent = data.email || "";
+    document.getElementById("assigned-stations").textContent = data.assigned_stations || "";
+
+    // If password already reset, hide form and redirect to device enrollment
+    if (data.password_reset_at) {
+      document.getElementById("password-box").style.display = "none";
+      // Redirect to device enrollment page
+      window.location.href = `device-enrollment.html?user_id=${encodeURIComponent(data.user_id)}&fullname=${encodeURIComponent(data.fullname)}&email=${encodeURIComponent(data.email)}&assigned_stations=${encodeURIComponent(data.assigned_stations)}`;
+    }
+  })
+  .catch(err => {
+    document.getElementById('msg').textContent = err.message;
+    document.getElementById('password-box').style.display = 'none';
+  });
 }
 
-// 🔁 CHANGE THESE URLs
-const GET_USER_URL = "https://n8n.isychronsolutions.cloud/webhook/get-user-info";
-const RESET_PASSWORD_URL = "https://n8n.isychronsolutions.cloud/webhook/reset-password";
-const DEVICE_ENROLLMENT_URL = "https://avillaluz622.github.io/IS/projects/trackerpro/device-enrollment.html";
-
-let userData = null;
-
-// Load user info
-fetch(GET_USER_URL, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ token })
-})
-.then(res => res.json())
-.then(data => {
-  userData = data;
-
-  document.getElementById("welcomeTitle").innerText =
-    `Welcome, ${data.fullname}`;
-
-  document.getElementById("userInfo").innerText =
-    `${data.email} • Stations: ${data.assigned_stations}`;
-
-  // 🔐 If password NOT yet reset
-  if (!data.password_reset_at) {
-    document.getElementById("resetSection").classList.remove("hidden");
-  } else {
-    showDeviceEnrollment();
-  }
-})
-.catch(() => {
-  document.body.innerHTML = "<h3>Error loading user info.</h3>";
-});
-
-function resetPassword() {
-  const pw = document.getElementById("password").value;
-  const cpw = document.getElementById("confirmPassword").value;
-  const msg = document.getElementById("resetMsg");
-
-  if (!pw || pw.length < 6) {
-    msg.innerHTML = "<div class='error'>Password must be at least 6 characters</div>";
-    return;
-  }
-  if (pw !== cpw) {
-    msg.innerHTML = "<div class='error'>Passwords do not match</div>";
+// Handle password reset submission
+document.getElementById("submit-btn").addEventListener("click", () => {
+  const newPassword = document.getElementById("password").value.trim();
+  const msgEl = document.getElementById("msg");
+  if (!newPassword) {
+    msgEl.textContent = "Password cannot be empty.";
     return;
   }
 
   fetch(RESET_PASSWORD_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, password: pw })
+    body: JSON.stringify({ token: token, password: newPassword })
   })
-  .then(res => res.json())
-  .then(() => {
-    msg.innerHTML = "<div class='success'>Password reset successful</div>";
-    setTimeout(showDeviceEnrollment, 1000);
+  .then(resp => resp.json())
+  .then(data => {
+    msgEl.style.color = "green";
+    msgEl.textContent = "Password successfully reset. Redirecting...";
+    // Redirect after short delay
+    setTimeout(() => {
+      window.location.href = `device-enrollment.html?user_id=${encodeURIComponent(data.user_id)}&fullname=${encodeURIComponent(data.fullname)}&email=${encodeURIComponent(data.email)}&assigned_stations=${encodeURIComponent(data.assigned_stations)}`;
+    }, 1200);
   })
-  .catch(() => {
-    msg.innerHTML = "<div class='error'>Failed to reset password</div>";
+  .catch(err => {
+    msgEl.style.color = "red";
+    msgEl.textContent = "Error resetting password. Try again later.";
   });
-}
-
-function showDeviceEnrollment() {
-  document.getElementById("resetSection").classList.add("hidden");
-  document.getElementById("deviceSection").classList.remove("hidden");
-
-  const link = `${DEVICE_ENROLLMENT_URL}?token=${encodeURIComponent(token)}`;
-  document.getElementById("deviceLink").href = link;
-}
+});
 </script>
 
 </body>
