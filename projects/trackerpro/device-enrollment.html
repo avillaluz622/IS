@@ -1,149 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Device Enrollment</title>
-  <style>
-    body { font-family: Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 20px; display: flex; justify-content: center; }
-    .container { background-color: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
-    h2, h3 { color: #333; margin-top: 0; }
-    .user-info { margin-bottom: 20px; background-color: #eef2f7; padding: 15px; border-radius: 8px; text-align: left; font-size: 14px; }
-    label { display: block; margin-top: 15px; font-weight: bold; color: #555; text-align: left; }
-    input[type="text"] { width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-    button { width: 100%; margin-top: 20px; padding: 12px; border: none; border-radius: 6px; background-color: #4caf50; color: white; font-size: 16px; cursor: pointer; transition: 0.2s; }
-    button:hover { background-color: #45a049; }
-    button:disabled { background-color: #ccc; cursor: not-allowed; }
-    #status { margin-top: 15px; font-weight: bold; font-size: 14px; }
-    .device-list { list-style: none; padding: 0; margin-top: 10px; text-align: left; }
-    .device-list li { background-color: #f1f3f6; padding: 10px; margin-bottom: 8px; border-radius: 6px; font-size: 13px; border-left: 4px solid #4caf50; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Device Enrollment</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f8; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        .user-info { background: #eef2f7; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Device Enrollment</h2>
-
-    <div class="user-info" id="userInfo">
-      <p>Verifying user identity...</p>
+    <div class="container">
+        <h2>Device Enrollment</h2>
+        <div class="user-info" id="userInfo">Loading profile...</div>
+        
+        <label for="device_name">Device Name:</label>
+        <input type="text" id="device_name" placeholder="Office Laptop, iPhone 15, etc." required>
+        <button id="enrollBtn">Enroll This Device</button>
+        <p id="status"></p>
     </div>
 
-    <form id="enrollForm">
-      <label for="device_name">Device Name:</label>
-      <input type="text" id="device_name" name="device_name" placeholder="e.g. Office Laptop or Samsung S21" required>
-      <button type="submit" id="enrollBtn">Enroll This Device</button>
-    </form>
+    <script>
+        const API_URL = "https://n8n.isychronsolutions.cloud/webhook-test/auth-check";
+        const params = new URLSearchParams(window.location.search);
+        const user_id = params.get('user_id');
 
-    <p id="status"></p>
-
-    <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-    <h3>Your Enrolled Devices</h3>
-    <ul class="device-list" id="deviceList">
-      <li>Loading device history...</li>
-    </ul>
-  </div>
-
-  <script>
-    // Configuration - Switch to /webhook/ for production
-    const API_BASE = "https://n8n.isychronsolutions.cloud/webhook-test";
-    
-    const params = new URLSearchParams(window.location.search);
-    const user_id = params.get('user_id');
-
-    const statusEl = document.getElementById('status');
-    const deviceList = document.getElementById('deviceList');
-    const userInfoDiv = document.getElementById('userInfo');
-    const enrollBtn = document.getElementById('enrollBtn');
-
-    // 1. Fetch User Data & Device List on Load
-    async function initPage() {
-      if (!user_id) {
-        userInfoDiv.innerHTML = '<p style="color:red;">Error: No User ID provided. Please log in again.</p>';
-        enrollBtn.disabled = true;
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_BASE}/get-user-info`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id, action: "fetch_enrollment_data" })
-        });
-
-        const data = await response.json();
-
-        // Populate User Info Section
-        userInfoDiv.innerHTML = `
-          <p><strong>User:</strong> ${data.fullname || 'Unknown'}</p>
-          <p><strong>Email:</strong> ${data.email || 'N/A'}</p>
-          <p><strong>Assigned Stations:</strong> ${data.assigned_stations || 'None'}</p>
-        `;
-
-        // Populate Device List
-        renderDevices(data.devices);
-
-      } catch (err) {
-        userInfoDiv.innerHTML = '<p style="color:red;">Failed to load account data.</p>';
-      }
-    }
-
-    function renderDevices(devices) {
-      deviceList.innerHTML = '';
-      if (devices && devices.length > 0) {
-        devices.forEach(d => {
-          const li = document.createElement('li');
-          li.textContent = `${d.device_name} (Enrolled: ${new Date(d.date).toLocaleDateString()})`;
-          deviceList.appendChild(li);
-        });
-      } else {
-        deviceList.innerHTML = '<li>No devices registered yet.</li>';
-      }
-    }
-
-    // 2. Simple Fingerprinting
-    function getFingerprint() {
-      return btoa([navigator.userAgent, screen.width, navigator.language].join('|'));
-    }
-
-    // 3. Handle Enrollment Submission
-    document.getElementById('enrollForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const device_name = document.getElementById('device_name').value.trim();
-      
-      statusEl.textContent = "Processing enrollment...";
-      statusEl.style.color = "blue";
-      enrollBtn.disabled = true;
-
-      try {
-        const response = await fetch(`${API_BASE}/enroll-device`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            user_id, 
-            device_name, 
-            fingerprint: getFingerprint() 
-          })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          statusEl.style.color = "green";
-          statusEl.textContent = "Success! Device added.";
-          document.getElementById('device_name').value = '';
-          // Refresh list
-          initPage(); 
-        } else {
-          throw new Error(result.message || "Enrollment failed.");
+        // 1. Fetch User Data (Path C in n8n)
+        async function fetchUserInfo() {
+            const resp = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user_id, action: "fetch_enrollment_data" })
+            });
+            const data = await resp.json();
+            document.getElementById('userInfo').innerHTML = `
+                <p><strong>User:</strong> ${data.fullname}</p>
+                <p><strong>Email:</strong> ${data.email}</p>
+                <p><strong>Station:</strong> ${data.assigned_stations}</p>
+            `;
         }
-      } catch (err) {
-        statusEl.style.color = "red";
-        statusEl.textContent = err.message;
-      } finally {
-        enrollBtn.disabled = false;
-      }
-    });
 
-    initPage();
-  </script>
+        // 2. Enroll Device (Path D in n8n)
+        document.getElementById('enrollBtn').addEventListener('click', async () => {
+            const device_name = document.getElementById('device_name').value;
+            const resp = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    user_id: user_id, 
+                    device_name: device_name, 
+                    action: "enroll_device" 
+                })
+            });
+            const result = await resp.json();
+            document.getElementById('status').textContent = result.message;
+        });
+
+        if(user_id) fetchUserInfo();
+    </script>
 </body>
 </html>
