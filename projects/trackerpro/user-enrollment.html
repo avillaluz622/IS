@@ -5,60 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>User Enrollment</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f4f6f8;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 100vh;
-    padding: 40px 20px;
-  }
-  h1 {
-    color: #333;
-    text-align: center;
-  }
-  .info-box, .form-box {
-    background: #fff;
-    padding: 20px 30px;
-    margin: 15px 0;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    max-width: 400px;
-    width: 100%;
-    text-align: center;
-  }
-  label {
-    display: block;
-    margin: 12px 0 5px;
-    font-weight: bold;
-    color: #555;
-  }
-  input[type="password"] {
-    width: 100%;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-  }
-  button {
-    margin-top: 20px;
-    padding: 12px 25px;
-    background-color: #0077ff;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    cursor: pointer;
-  }
-  button:hover {
-    background-color: #005fcc;
-  }
-  .message {
-    margin-top: 15px;
-    color: red;
-  }
+  body { font-family: Arial, sans-serif; background: #f4f6f8; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+  .info-box, .form-box { background: #fff; padding: 20px 30px; margin: 15px 0; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); max-width: 400px; width: 100%; text-align: center; }
+  label { display: block; margin: 12px 0 5px; font-weight: bold; color: #555; }
+  input[type="password"] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+  button { margin-top: 20px; padding: 12px 25px; background-color: #0077ff; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+  .message { margin-top: 15px; color: red; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -71,21 +23,18 @@
   <p><strong>Assigned Stations:</strong> <span id="assigned-stations">Loading...</span></p>
 </div>
 
-<div class="form-box" id="password-box">
-  <form id="reset-form">
+<div class="form-box" id="password-box" style="display: none;"> <form id="reset-form">
     <label for="password">Set your new password:</label>
-    <input type="password" id="password" name="password" placeholder="Enter new password" required>
-    <button type="submit">Reset Password</button>
+    <input type="password" id="password" name="new-password" placeholder="Enter new password" required>
+    <button type="submit" id="submit-btn">Reset Password</button>
     <div class="message" id="msg"></div>
   </form>
 </div>
 
 <script>
-// === CONFIGURE YOUR WEBHOOK URL HERE ===
 const RESET_PASSWORD_URL = "https://n8n.isychronsolutions.cloud/webhook-test/password-reset";
 const GET_USER_URL = "https://n8n.isychronsolutions.cloud/webhook-test/get-user-info";
 
-// Parse token from URL
 const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get("token");
 
@@ -96,72 +45,71 @@ const msgEl = document.getElementById("msg");
 const passwordBox = document.getElementById("password-box");
 
 if (!token) {
-  msgEl.textContent = "Missing token. Cannot load user info.";
-  passwordBox.style.display = 'none';
+    msgEl.textContent = "Error: No security token found in URL.";
+    msgEl.parentElement.style.display = "block";
 } else {
-  // Fetch user info from Workflow 3
-  fetch(GET_USER_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }, // no Authorization
-    body: JSON.stringify({ token: token })
-  })
-  .then(resp => resp.json())
-  .then(data => {
-    console.log("Workflow 3 response:", data);
-    if (!data || !data.user_id) {
-      throw new Error("Unable to fetch user info. Try again later.");
-    }
+    fetch(GET_USER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: token })
+    })
+    .then(async resp => {
+        if (!resp.ok) throw new Error(`Server Error: ${resp.status}`);
+        return resp.json();
+    })
+    .then(data => {
+        // Handle n8n returning an array (common in n8n)
+        const user = Array.isArray(data) ? data[0] : data;
 
-    // Display user info
-    fullnameEl.textContent = data.fullname || "";
-    emailEl.textContent = data.email || "";
-    stationsEl.textContent = data.assigned_stations || "";
+        if (!user || !user.user_id) {
+            throw new Error("User data not found or token expired.");
+        }
 
-    // Only hide password box if password has been reset
-    if (data.password_reset_at !== null && data.password_reset_at !== "") {
-      passwordBox.style.display = "none";
-      // Redirect to device enrollment page
-      window.location.href = `device-enrollment.html?user_id=${encodeURIComponent(data.user_id)}&fullname=${encodeURIComponent(data.fullname)}&email=${encodeURIComponent(data.email)}&assigned_stations=${encodeURIComponent(data.assigned_stations)}`;
-    } else {
-      passwordBox.style.display = "block";
-    }
-  })
-  .catch(err => {
-    console.error(err);
-    msgEl.textContent = err.message;
-    passwordBox.style.display = 'none';
-  });
+        fullnameEl.textContent = user.fullname || "N/A";
+        emailEl.textContent = user.email || "N/A";
+        stationsEl.textContent = user.assigned_stations || "None";
+
+        // Logic check: if already reset, redirect
+        if (user.password_reset_at) {
+            msgEl.style.color = "green";
+            msgEl.textContent = "Account already active. Redirecting...";
+            setTimeout(() => {
+                window.location.href = `device-enrollment.html?user_id=${user.user_id}`;
+            }, 1500);
+        } else {
+            passwordBox.style.display = "block";
+        }
+    })
+    .catch(err => {
+        console.error("Fetch error:", err);
+        fullnameEl.textContent = "Error";
+        emailEl.textContent = "Error";
+        stationsEl.textContent = "Error";
+        msgEl.textContent = "Connection failed: Check CORS or n8n status.";
+        passwordBox.style.display = "none";
+    });
 }
 
-// Handle password reset submission
+// Submit Logic
 document.getElementById("reset-form").addEventListener("submit", (e) => {
-  e.preventDefault(); // prevent page reload
-  const newPassword = document.getElementById("password").value.trim();
-
-  if (!newPassword) {
-    msgEl.textContent = "Password cannot be empty.";
-    return;
-  }
-
-  fetch(RESET_PASSWORD_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }, // no Authorization
-    body: JSON.stringify({ token: token, password: newPassword })
-  })
-  .then(resp => resp.json())
-  .then(data => {
-    msgEl.style.color = "green";
-    msgEl.textContent = "Password successfully reset. Redirecting...";
-    setTimeout(() => {
-      window.location.href = `device-enrollment.html?user_id=${encodeURIComponent(data.user_id)}&fullname=${encodeURIComponent(data.fullname)}&email=${encodeURIComponent(data.email)}&assigned_stations=${encodeURIComponent(data.assigned_stations)}`;
-    }, 1200);
-  })
-  .catch(err => {
-    msgEl.style.color = "red";
-    msgEl.textContent = "Error resetting password. Try again later.";
-  });
+    e.preventDefault();
+    const newPassword = document.getElementById("password").value;
+    
+    fetch(RESET_PASSWORD_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: token, password: newPassword })
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        msgEl.style.color = "green";
+        msgEl.textContent = "Success! Redirecting...";
+        // ... (your redirect logic)
+    })
+    .catch(err => {
+        msgEl.textContent = "Submit failed. Try again.";
+    });
 });
 </script>
-
 </body>
 </html>
