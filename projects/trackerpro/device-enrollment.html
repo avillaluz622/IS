@@ -2,172 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Device Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Enrollment</title>
     <style>
-        :root { --primary: #0071e3; --bg: #f5f5f7; --text: #1d1d1f; --card-bg: #ffffff; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; -webkit-font-smoothing: antialiased; }
-        
+        :root { --primary: #0071e3; --bg: #f5f5f7; --text: #1d1d1f; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 480px; }
-        
-        /* Profile Header Styles */
-        .header-card { text-align: center; margin-bottom: 40px; }
-        h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
-        .badge { background: #e8e8ed; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #515154; text-transform: uppercase; letter-spacing: 0.5px; }
-        .station-info { font-size: 15px; color: #86868b; margin-top: 12px; }
-
-        /* Enrollment Form Section */
-        .enroll-section { background: var(--card-bg); padding: 24px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); margin-bottom: 32px; }
-        .input-group { display: flex; gap: 12px; }
-        input { flex: 1; padding: 12px 16px; border: 1px solid #d2d2d7; border-radius: 12px; font-size: 16px; background: #fafafa; outline: none; transition: border 0.2s ease; }
-        input:focus { border-color: var(--primary); background: #fff; }
-        
-        button#enrollBtn { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 15px; cursor: pointer; transition: all 0.2s ease; min-width: 80px; }
-        button#enrollBtn:disabled { background: #d2d2d7; cursor: not-allowed; opacity: 0.7; }
-        
-        /* Device List Styles */
-        .device-item { background: var(--card-bg); padding: 18px 24px; border-radius: 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 12px rgba(0,0,0,0.03); transition: transform 0.2s ease; }
-        .device-item:hover { transform: translateY(-2px); }
-        .device-info { display: flex; flex-direction: column; }
-        .device-name { font-weight: 600; font-size: 17px; margin-bottom: 2px; }
-        .device-id { font-size: 13px; color: #86868b; font-family: monospace; }
-        
-        .btn-delete { color: #ff3b30; background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer; padding: 8px; border-radius: 8px; transition: background 0.2s ease; }
-        .btn-delete:hover { background: #fff5f5; }
-
-        .empty-state { text-align: center; color: #86868b; margin-top: 40px; font-size: 15px; }
+        .header-card { text-align: center; margin: 20px 0 30px; }
+        h1 { font-size: 28px; font-weight: 700; margin: 0 0 8px; }
+        .badge { background: #e8e8ed; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #515154; text-transform: uppercase; }
+        .station-info { font-size: 15px; color: #86868b; margin-top: 10px; }
+        .enroll-section { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); margin-bottom: 25px; }
+        .input-group { display: flex; flex-direction: column; gap: 12px; }
+        input { width: 100%; height: 50px; padding: 0 16px; border: 1px solid #d2d2d7; border-radius: 12px; font-size: 16px; outline: none; background: #fafafa; }
+        button#enrollBtn { height: 50px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; font-size: 16px; cursor: pointer; }
+        button#enrollBtn:disabled { background: #d2d2d7; }
+        .device-item { background: white; padding: 18px; border-radius: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .device-info { display: flex; flex-direction: column; gap: 2px; }
+        .device-name { font-weight: 600; font-size: 16px; }
+        .device-id { font-size: 12px; color: #86868b; font-family: monospace; }
+        .btn-delete { color: #ff3b30; font-size: 14px; font-weight: 600; padding: 10px; background: none; border: none; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <div class="header-card" id="profileHeader">
-        <h1>Welcome</h1>
-        <p>Loading your profile...</p>
-    </div>
-
+    <div class="header-card" id="profileHeader"><h1>Loading...</h1></div>
     <div class="enroll-section">
         <div class="input-group">
-            <input type="text" id="deviceName" placeholder="Enter device name" autocomplete="off">
-            <button id="enrollBtn">Add</button>
+            <input type="text" id="deviceName" placeholder="Device Name" inputmode="text">
+            <button id="enrollBtn">Add Device</button>
         </div>
     </div>
-
-    <div id="deviceList">
-        </div>
+    <div id="deviceList"></div>
 </div>
-
 <script>
-    // Production Webhook URL
     const WEBHOOK_URL = "https://n8n.isychronsolutions.cloud/webhook/auth-check";
-    // const WEBHOOK_URL = "https://n8n.isychronsolutions.cloud/webhook-test/auth-check";
-    
-    const params = new URLSearchParams(window.location.search);
-    const user_id = params.get('user_id');
+    //const WEBHOOK_URL = "https://n8n.isychronsolutions.cloud/webhook-test/auth-check";
+    const user_id = new URLSearchParams(window.location.search).get('user_id');
 
     async function loadData() {
         if (!user_id) return;
-        
         try {
             const resp = await fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: "fetch_enrollment_data", user_id: user_id })
+                body: JSON.stringify({ action: "fetch_enrollment_data", user_id })
             });
             const data = await resp.json();
-            
-            // Render Header with role and station (singular)
             document.getElementById('profileHeader').innerHTML = `
-                <h1>${data.fullname || 'Welcome'}</h1>
-                <span class="badge">${data.role || 'User'}</span>
-                <div class="station-info">Station: ${data.assigned_station || 'Not Assigned'}</div>
+                <h1>${data.fullname}</h1>
+                <span class="badge">${data.role}</span>
+                <div class="station-info">Station: ${data.assigned_station || 'None'}</div>
             `;
-
-            // Render Device List
             const listEl = document.getElementById('deviceList');
-            if (data.devices && data.devices.length > 0) {
-                listEl.innerHTML = data.devices.map(d => `
+            listEl.innerHTML = (data.devices && data.devices.length > 0) 
+                ? data.devices.map(d => `
                     <div class="device-item">
-                        <div class="device-info">
-                            <span class="device-name">${d.device_name}</span>
-                            <span class="device-id">${d.device_id}</span>
-                        </div>
+                        <div class="device-info"><span class="device-name">${d.device_name}</span><span class="device-id">${d.device_id}</span></div>
                         <button class="btn-delete" onclick="deleteDevice('${d.device_id}')">Remove</button>
-                    </div>
-                `).join('');
-            } else {
-                listEl.innerHTML = '<div class="empty-state">No devices enrolled yet.</div>';
-            }
-        } catch (err) {
-            console.error("Error loading data:", err);
-        }
+                    </div>`).join('')
+                : '<p style="text-align:center; color:#86868b;">No devices yet.</p>';
+        } catch (err) { console.error(err); }
     }
 
-    // Enrollment logic with auto-refresh and disabled state
     document.getElementById('enrollBtn').onclick = async function() {
         const input = document.getElementById('deviceName');
-        const btn = this;
-        const deviceName = input.value.trim();
-
-        if (!deviceName) return;
-
-        // Disable UI during submission
-        btn.disabled = true;
-        btn.innerText = "Adding...";
-        input.disabled = true;
-
-        try {
-            const resp = await fetch(WEBHOOK_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    action: "enroll_device", 
-                    user_id: user_id, 
-                    device_name: deviceName 
-                })
-            });
-            
-            const res = await resp.json();
-
-            if (res.success) {
-                input.value = ''; // Clear field
-                await loadData(); // Refresh list
-            } else {
-                alert("Error: " + (res.message || "Could not enroll device"));
-            }
-        } catch (err) {
-            alert("Connection error. Please try again.");
-        } finally {
-            // Restore UI state
-            btn.disabled = false;
-            btn.innerText = "Add";
-            input.disabled = false;
-            input.focus();
-        }
+        if (!input.value.trim()) return;
+        this.disabled = true; this.innerText = "Adding...";
+        const resp = await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: "enroll_device", user_id, device_name: input.value.trim() })
+        });
+        const res = await resp.json();
+        if (res.success) { input.value = ''; await loadData(); }
+        this.disabled = false; this.innerText = "Add Device";
     };
 
     async function deleteDevice(id) {
-        if (!confirm("Are you sure you want to remove this device?")) return;
-        
-        try {
-            await fetch(WEBHOOK_URL, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: "delete_device", device_id: id })
-            });
-            loadData(); // Refresh list after deletion
-        } catch (err) {
-            alert("Failed to remove device.");
-        }
-    }
-
-    // Initial data fetch
-    if (user_id) {
+        if (!confirm("Remove this device?")) return;
+        await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: "delete_device", device_id: id })
+        });
         loadData();
-    } else {
-        document.getElementById('profileHeader').innerHTML = "<h1>Access Denied</h1><p>No user ID found.</p>";
     }
+    if (user_id) loadData();
 </script>
-
 </body>
 </html>
