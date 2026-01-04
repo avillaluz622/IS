@@ -110,18 +110,17 @@
                 <div class="station-info">Station: ${data.assigned_station || 'Unassigned'}</div>
             `;
 
-            // Render Device List
-            const listEl = document.getElementById('deviceList');
-            if (data.devices && data.devices.length > 0) {
-                listEl.innerHTML = data.devices.map(d => `
-                    <div class="device-item">
-                        <div class="device-info">
-                            <span class="device-name">${d.device_name}</span>
-                            <span class="device-id">${d.device_id}</span>
-                        </div>
-                        <button class="btn-delete" onclick="deleteDevice('${d.device_id}')">Remove</button>
+            // Render Device List with Name and Alias
+            listEl.innerHTML = data.devices.map(d => `
+                <div class="device-item">
+                    <div class="device-info">
+                        <span class="device-name">${d.device_name} (${d.device_alias})</span>
+                        <span class="device-id">ID: ${d.device_id}</span>
                     </div>
-                `).join('');
+                    <button class="btn-delete" onclick="deleteDevice('${d.device_id}')">Remove</button>
+                </div>
+            `).join('');
+                
             } else {
                 listEl.innerHTML = '<p style="text-align:center; color:#86868b; margin-top:40px;">No devices yet.</p>';
             }
