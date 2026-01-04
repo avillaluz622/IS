@@ -2,42 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Access Portal</title>
     <style>
         :root { --primary: #0071e3; --bg: #f5f5f7; --text: #1d1d1f; --card-bg: #ffffff; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: var(--card-bg); padding: 3rem 2rem; border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 380px; text-align: center; }
-        h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px; }
-        .status-msg { font-size: 14px; color: #86868b; margin-bottom: 24px; }
-        .form-group { margin-bottom: 16px; text-align: left; }
-        input { width: 100%; padding: 12px 16px; border: 1px solid #d2d2d7; border-radius: 10px; font-size: 16px; background: #fafafa; box-sizing: border-box; transition: border 0.2s; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .card { background: var(--card-bg); padding: 2.5rem 1.5rem; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.06); width: 100%; max-width: 400px; text-align: center; }
+        h1 { font-size: 26px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.5px; }
+        .status-msg { font-size: 15px; color: #86868b; margin-bottom: 25px; line-height: 1.4; }
+        .form-group { margin-bottom: 15px; }
+        input { width: 100%; height: 50px; padding: 0 16px; border: 1px solid #d2d2d7; border-radius: 12px; font-size: 16px; background: #fafafa; transition: all 0.2s; }
         input:focus { outline: none; border-color: var(--primary); background: #fff; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 10px; background-color: var(--primary); color: white; font-size: 16px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; margin-top: 12px; }
-        button:hover { opacity: 0.85; }
-        .error { color: #ff3b30; font-size: 13px; margin-top: 12px; display: none; }
-        .success-box { color: #34c759; font-size: 13px; margin-bottom: 16px; display: none; }
+        button { width: 100%; height: 50px; border: none; border-radius: 12px; background-color: var(--primary); color: white; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        .error { color: #ff3b30; font-size: 14px; margin-top: 15px; display: none; }
+        .success-box { color: #34c759; font-size: 14px; margin-bottom: 20px; display: none; padding: 10px; background: #f2faf3; border-radius: 10px; }
     </style>
 </head>
 <body>
-
 <div class="card">
-    <h1 id="title">Loading...</h1>
-    <p id="statusMsg" class="status-msg">Verifying your link...</p>
+    <h1 id="title">Portal</h1>
+    <p id="statusMsg" class="status-msg">Verifying access...</p>
     <div id="successBox" class="success-box"></div>
-    
     <div id="loginForm" style="display: none;">
-        <div class="form-group" id="emailGroup">
-            <input type="email" id="email" placeholder="Email address">
-        </div>
-        <div class="form-group">
-            <input type="password" id="password" placeholder="Password">
-        </div>
+        <div class="form-group" id="emailGroup"><input type="email" id="email" placeholder="Email" inputmode="email"></div>
+        <div class="form-group"><input type="password" id="password" placeholder="Password"></div>
         <button id="submitBtn">Continue</button>
         <div id="errorMsg" class="error"></div>
     </div>
 </div>
-
 <script>
     const WEBHOOK_URL = "https://n8n.isychronsolutions.cloud/webhook/auth-check";
     //const WEBHOOK_URL = "https://n8n.isychronsolutions.cloud/webhook-test/auth-check";
@@ -46,7 +39,7 @@
     let isNewUser = false;
 
     async function checkStatus() {
-        if (!token) return showError("Invalid access link.");
+        if (!token) return showError("No token found.");
         try {
             const resp = await fetch(WEBHOOK_URL, {
                 method: 'POST',
@@ -68,7 +61,7 @@
         const password = document.getElementById('password').value;
         const email = document.getElementById('email').value;
         if (!password) return showError("Password required.");
-
+        
         try {
             const resp = await fetch(WEBHOOK_URL, {
                 method: 'POST',
@@ -78,7 +71,6 @@
             const result = await resp.json();
             if (result.success) {
                 if (result.requires_login) {
-                    // Reset UI for login after activation
                     document.getElementById('successBox').innerText = result.message;
                     document.getElementById('successBox').style.display = 'block';
                     isNewUser = false;
