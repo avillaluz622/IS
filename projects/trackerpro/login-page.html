@@ -3,83 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Authentication</title>
+    <title>Access Portal</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f6f8; display: flex; flex-direction: column; align-items: center; padding: 40px; }
-        .form-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; display: none; }
-        label { display: block; margin: 10px 0 5px; font-weight: bold; color: #555; }
-        input { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #0077ff; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-        .msg { margin-top: 15px; font-size: 14px; text-align: center; color: #666; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { color: #1c1e21; text-align: center; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; color: #4b4f56; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 4px; background-color: #1877f2; color: white; font-weight: bold; cursor: pointer; font-size: 1rem; margin-top: 1rem; }
+        button:hover { background-color: #166fe5; }
+        .error { color: #d32f2f; font-size: 0.9rem; margin-top: 10px; text-align: center; display: none; }
+        .status-msg { text-align: center; color: #606770; margin-bottom: 1rem; font-size: 0.95rem; }
     </style>
 </head>
 <body>
-    <div id="loader">Verifying account...</div>
-    <div class="form-box" id="auth-container">
-        <h2 id="form-title">Login</h2>
-        <form id="auth-form">
-            <div id="email-group">
-                <label for="email_field">Email Address</label>
-                <input type="email" id="email_field" name="email" autocomplete="username">
-            </div>
-            <label for="password_field" id="pass-label">Password</label>
-            <input type="password" id="password_field" name="password" required autocomplete="current-password">
-            <button type="submit" id="btn-text">Login</button>
-        </form>
-        <div class="msg" id="status-msg"></div>
+
+<div class="card">
+    <h2 id="title">Loading...</h2>
+    <div id="statusMsg" class="status-msg">Validating your access link...</div>
+    
+    <div id="loginForm" style="display: none;">
+        <div class="form-group" id="emailGroup">
+            <label>Email Address</label>
+            <input type="email" id="email" placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+            <label id="passLabel">Password</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+        <button id="submitBtn">Continue</button>
+        <div id="errorMsg" class="error"></div>
     </div>
+</div>
 
-    <script>
-        const API_URL = "https://n8n.isychronsolutions.cloud/webhook-test/auth-check";
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get("token");
+<script>
+    // Replace with your PRODUCTION webhook URL
+    const WEBHOOK_URL = "https://n8n.isychronsolutions.cloud/webhook/auth-check";
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    
+    let isNewUser = false;
 
-        // 1. Status Check (Path A in n8n)
-        fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: token, action: "check_status" })
-        })
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById("loader").style.display = "none";
-            document.getElementById("auth-container").style.display = "block";
-            if (data.mode === "reset") {
-                document.getElementById("form-title").textContent = "Account Activation";
-                document.getElementById("email-group").style.display = "none";
-                document.getElementById("pass-label").textContent = "Set New Password";
-                document.getElementById("btn-text").textContent = "Create Account";
+    // Phase 1: Check user status on page load (Path 1)
+    async function checkStatus() {
+        if (!token) {
+            showError("Invalid or missing access token.");
+            return;
+        }
+
+        try {
+            const resp = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: "check_status", token: token })
+            });
+            const data = await resp.json();
+
+            if (data.exists) {
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('statusMsg').style.display = 'none';
+                
+                if (data.is_new) {
+                    // Path 2 Branch A: Account Activation
+                    isNewUser = true;
+                    document.getElementById('title').innerText = "Create Password";
+                    document.getElementById('passLabel').innerText = "New Password";
+                    document.getElementById('submitBtn').innerText = "Activate Account";
+                    document.getElementById('emailGroup').style.display = 'none'; // Email already known by token
+                } else {
+                    // Path 2 Branch B: Standard Login
+                    isNewUser = false;
+                    document.getElementById('title').innerText = "Login";
+                    document.getElementById('submitBtn').innerText = "Login";
+                }
+            } else {
+                showError("Access link expired or invalid.");
             }
-        });
+        } catch (err) {
+            showError("Connection error. Please try again later.");
+        }
+    }
 
-        // 2. Authentication Submit (Path B in n8n)
-        document.getElementById("auth-form").addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const statusMsg = document.getElementById("status-msg");
-            statusMsg.textContent = "Checking...";
+    // Phase 2: Handle Submit (Path 2)
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+        const password = document.getElementById('password').value;
+        const email = document.getElementById('email').value;
+        const errorEl = document.getElementById('errorMsg');
+        
+        errorEl.style.display = 'none';
 
+        if (!password) {
+            showError("Please enter a password.");
+            return;
+        }
+
+        try {
             const payload = {
+                action: "authenticate", // CRITICAL: This routes to Switch Path 2
                 token: token,
-                email: document.getElementById("email_field").value,
-                password: document.getElementById("password_field").value,
-                action: "authenticate"
+                password: password,
+                email: isNewUser ? null : email // Only send email for returning users
             };
 
-            const resp = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+            const resp = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
             const result = await resp.json();
-            
+
             if (result.success) {
-                // REDIRECT to enrollment with the user_id
+                // Successful Auth: Redirect to Enrollment with user_id
                 window.location.href = `device-enrollment.html?user_id=${encodeURIComponent(result.user_id)}`;
             } else {
-                statusMsg.style.color = "red";
-                statusMsg.textContent = result.message || "Invalid credentials.";
+                showError(result.message || "Invalid credentials.");
             }
-        });
-    </script>
+        } catch (err) {
+            showError("Authentication failed. Check your connection.");
+        }
+    });
+
+    function showError(msg) {
+        const errorEl = document.getElementById('errorMsg');
+        errorEl.innerText = msg;
+        errorEl.style.display = 'block';
+        document.getElementById('statusMsg').innerText = "";
+    }
+
+    checkStatus();
+</script>
+
 </body>
 </html>
