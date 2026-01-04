@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <title>Device Enrollment</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f6f8; padding: 40px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
-        .user-info { background: #eef2f7; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
+        body { font-family: Arial, sans-serif; background: #f4f6f8; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        .user-info { background: #eef2f7; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .device-card { border: 1px solid #ddd; padding: 12px; margin-top: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .delete-btn { background: #ff4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        #enrollBtn { width: 100%; padding: 12px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -16,10 +18,12 @@
         <h2>Device Enrollment</h2>
         <div class="user-info" id="userInfo">Loading profile...</div>
         
-        <label for="device_name">Device Name:</label>
-        <input type="text" id="device_name" placeholder="Office Laptop, iPhone 15, etc." required>
+        <input type="text" id="device_name" placeholder="Device Name (e.g. Work Laptop)" required>
         <button id="enrollBtn">Enroll This Device</button>
-        <p id="status"></p>
+        
+        <hr style="margin: 20px 0;">
+        <h3>Your Enrolled Devices</h3>
+        <div id="deviceList"></div>
     </div>
 
     <script>
@@ -27,38 +31,53 @@
         const params = new URLSearchParams(window.location.search);
         const user_id = params.get('user_id');
 
-        // 1. Fetch User Data (Path C in n8n)
-        async function fetchUserInfo() {
+        async function init() {
             const resp = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: user_id, action: "fetch_enrollment_data" })
             });
             const data = await resp.json();
-            document.getElementById('userInfo').innerHTML = `
-                <p><strong>User:</strong> ${data.fullname}</p>
-                <p><strong>Email:</strong> ${data.email}</p>
-                <p><strong>Station:</strong> ${data.assigned_stations}</p>
-            `;
+            
+            document.getElementById('userInfo').innerHTML = `<strong>User:</strong> ${data.fullname}<br><strong>Station:</strong> ${data.assigned_stations}`;
+            
+            const list = document.getElementById('deviceList');
+            if (!data.devices || data.devices.length === 0) {
+                list.innerHTML = "<p>No devices enrolled yet.</p>";
+            } else {
+                list.innerHTML = data.devices.map(d => `
+                    <div class="device-card">
+                        <div><strong>${d.device_name}</strong><br><small>${d.device_id}</small></div>
+                        <button class="delete-btn" onclick="deleteDevice('${d.device_id}')">Delete</button>
+                    </div>
+                `).join('');
+            }
         }
 
-        // 2. Enroll Device (Path D in n8n)
+        async function deleteDevice(deviceId) {
+            if (!confirm("Are you sure you want to delete this device?")) return;
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: deviceId, action: "delete_device" })
+            });
+            init(); // Refresh list
+        }
+
         document.getElementById('enrollBtn').addEventListener('click', async () => {
-            const device_name = document.getElementById('device_name').value;
-            const resp = await fetch(API_URL, {
+            await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     user_id: user_id, 
-                    device_name: device_name, 
+                    device_name: document.getElementById('device_name').value, 
                     action: "enroll_device" 
                 })
             });
-            const result = await resp.json();
-            document.getElementById('status').textContent = result.message;
+            init(); // Refresh list
         });
 
-        if(user_id) fetchUserInfo();
+        if (user_id) init();
     </script>
 </body>
 </html>
